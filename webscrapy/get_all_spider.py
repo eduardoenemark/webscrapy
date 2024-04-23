@@ -13,7 +13,7 @@ from scrapy.http import Response
 
 class GetAllSpider(scrapy.Spider):
     name: str = "getallspider"
-    root_path: str = None
+    save_dir: str = None
     domain: str = None
     override: bool = False
 
@@ -37,9 +37,11 @@ class GetAllSpider(scrapy.Spider):
         segs = self.segments(self.url)
         self.domain = segs[0]
 
-        self.root_path = getattr(self, "save-dir", None)
-        if self.root_path is None:
-            self.root_path = os.curdir + f"/{self.domain}"
+        self.save_dir = getattr(self, "save-dir", None)
+        if self.save_dir is None:
+            self.save_dir = os.curdir + f"/{self.domain}"
+        save_dir_path = Path(self.save_dir)
+        save_dir_path.mkdir(parents=True, exist_ok=True, mode=0o777)
 
     def start_requests(self) -> Iterable[Request]:
         yield scrapy.Request(url=self.url, callback=self.parse)
@@ -50,7 +52,7 @@ class GetAllSpider(scrapy.Spider):
 
     def save(self, url: str, content_type: str, data: bytes) -> int:
         segs = self.segments(url)
-        dir_path = self.root_path + os.sep
+        dir_path = self.save_dir + os.sep
         filename = re.compile(pattern="\\0").sub(repl="", string=segs[-1])[:255]
         filepath = None
 
