@@ -57,3 +57,5 @@ env.bak/
 venv.bak/
 .idea/
 requirements.txt
+__pycache__/
+*.pyc
