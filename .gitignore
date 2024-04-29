@@ -58,4 +58,12 @@ venv.bak/
 .idea/
 requirements.txt
 __pycache__/
+webscrapy/__pycache__/
 *.pyc
+examples/freebsdfoundation.org/
+examples/httpwg.org/
+examples/scrapy-quotes-webdomain/
+examples/quotes.toscrape.com/
+scrapy-quotes-webdomain/
+scrapy-freebsd-webdomain/
+httpwg.org/
