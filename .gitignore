@@ -67,3 +67,5 @@ examples/quotes.toscrape.com/
 scrapy-quotes-webdomain/
 scrapy-freebsd-webdomain/
 httpwg.org/
+*.out
+*.out.1
