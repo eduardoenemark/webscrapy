@@ -9,6 +9,8 @@ import scrapy
 from scrapy import Request
 from scrapy.crawler import CrawlerProcess
 from scrapy.http import Response
+import mimetypes
+from urllib.parse import urlparse
 
 
 class GetAllSpider(scrapy.Spider):
@@ -56,10 +58,15 @@ class GetAllSpider(scrapy.Spider):
         filename = re.compile(pattern="\\0").sub(repl="", string=segs[-1])[:255]
         filepath = None
 
-        if (self.CONTENT_TYPE_HTML in content_type.lower()
-                and not re.compile(pattern="\\.(html|xhtml|htm)$|.*\\?.+").match(filename)):
+        # Remove charset of content type.
+        file_ext = mimetypes.guess_extension(re.sub(pattern=";.*", repl="", string=content_type))
+        url_parsed = urlparse(url)
+
+        # Not exist file's extension for URL
+        if not re.compile(pattern="/.+\\.[a-zA-Z0-9]{2,10}$").match(url_parsed.path) and not url_parsed.query:
             dir_path += os.sep.join(segs)
-            filepath = dir_path + "/index.html"
+            filepath = dir_path + f"/index{file_ext}"
+        # Exist at least a "query" into URL.
         else:
             dir_path += os.sep.join(segs[:-1])
             filepath = dir_path + os.sep + filename
@@ -102,6 +109,9 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--url", dest="url", type=str, help="Web domain to scrapy.")
     parser.add_argument("--allowed-domains", dest="allowed_domains", type=str, help="domains separated by commas.")
+    parser.add_argument("--delay", dest="delay", type=int, default=1, help="delay in seconds between requests.")
+    parser.add_argument("--randomize-delay", dest="randomize_delay", type=bool, default=True,
+                        help="randomize delay interval.")
     parser.add_argument("--save-dir", dest="save_dir", type=str, help="Local directory to save files.")
     parser.add_argument("--override", dest="override", type=bool, help="Override saved files.")
     parser.add_argument("--enable-log-file", dest="enable_log_file", type=bool, default=False,
@@ -114,6 +124,8 @@ def main():
     process = CrawlerProcess({
         "CONCURRENT_REQUESTS_PER_DOMAIN": args.requests_per_domain,
         "AUTOTHROTTLE_TARGET_CONCURRENCY": args.requests_per_domain,
+        "DOWNLOAD_DELAY": args.delay,
+        "RANDOMIZE_DOWNLOAD_DELAY": args.randomize_delay,
         "USER_AGENT": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "DEPT_STATS": True,
         "LOG_ENABLED": True,
