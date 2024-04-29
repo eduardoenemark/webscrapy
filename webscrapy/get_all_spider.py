@@ -131,6 +131,7 @@ def main():
         "DEPTH_STATS_VERBOSE": True,
         "DOWNLOAD_MAXSIZE": 0,
         "REACTOR_THREADPOOL_MAXSIZE": 1024,
+        "ROBOTSTXT_OBEY": False,
         "SCHEDULER_DISK_QUEUE": "scrapy.squeues.PickleFifoDiskQueue",
         "SCHEDULER_MEMORY_QUEUE": "scrapy.squeues.FifoMemoryQueue",
         "SCRAPER_SLOT_MAX_ACTIVE_SIZE": 5_000_000,
