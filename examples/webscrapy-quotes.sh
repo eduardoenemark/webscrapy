@@ -3,4 +3,5 @@
 poetry run getallspider --url=https://quotes.toscrape.com \
                         --allowed-domains=toscrape.com \
                         --save-dir=./scrapy-quotes-webdomain \
-                        --delay=2
+                        --delay=0 \
+                        --also-save-links=true

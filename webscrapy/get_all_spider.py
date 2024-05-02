@@ -1,4 +1,5 @@
 import argparse
+import logging
 import mimetypes
 import os
 import re
@@ -7,17 +8,18 @@ from typing import Any
 from typing import Iterable
 from urllib.parse import urlparse
 
-import scrapy
-from scrapy import Request
+from scrapy import Request, Spider
 from scrapy.crawler import CrawlerProcess
 from scrapy.http import Response
 
 
-class GetAllSpider(scrapy.Spider):
+class GetAllSpider(Spider):
     name: str = "getallspider"
     save_dir: str = None
     domain: str = None
     override: bool = False
+    only_links: bool = False
+    also_save_links: bool = False
 
     CONTENT_TYPE_HTML: str = "text/html"
     SELECT_REF_XPATH: str = "//a/@href|//link/@href|//script/@src|//img/@src|//base/@href|//area/@href"
@@ -35,6 +37,8 @@ class GetAllSpider(scrapy.Spider):
             raise RuntimeError("URL is None!")
 
         self.override = getattr(self, "override", False)
+        self.only_links = getattr(self, "only-links", False)
+        self.also_save_links = getattr(self, "also-save-links", False)
 
         segs = self.segments(self.url)
         self.domain = segs[0]
@@ -42,17 +46,19 @@ class GetAllSpider(scrapy.Spider):
         self.save_dir = getattr(self, "save-dir", None)
         if self.save_dir is None:
             self.save_dir = os.curdir + f"/{self.domain}"
-        save_dir_path = Path(self.save_dir)
-        save_dir_path.mkdir(parents=True, exist_ok=True, mode=0o777)
+
+        if not self.only_links or self.also_save_links:
+            save_dir_path = Path(self.save_dir)
+            save_dir_path.mkdir(parents=True, exist_ok=True, mode=0o777)
 
     def start_requests(self) -> Iterable[Request]:
-        yield scrapy.Request(url=self.url, callback=self.parse)
+        yield Request(url=self.url, callback=self.parse)
 
     def segments(self, url: str) -> [str]:
         url_path: str = re.compile("^.+://|/$").sub(repl="", string=url)
         return re.split(pattern="/", string=url_path)
 
-    def save(self, url: str, content_type: str, data: bytes) -> int:
+    def create_physical_path(self, url: str, content_type: str) -> Path:
         segs = self.segments(url)
         dir_path = self.save_dir + os.sep
         filename = re.compile(pattern="\\0").sub(repl="", string=segs[-1])[:255]
@@ -78,29 +84,46 @@ class GetAllSpider(scrapy.Spider):
         try:
             path = Path(filepath)
             path.touch(mode=0o777, exist_ok=not self.override)
-            amount = path.write_bytes(data)
-            return amount
-        except FileExistsError:
+            return path
+        except FileExistsError as error:
             self.log(f"file {filepath} exists!")
+            raise error
+
+    def save_file(self, url: str, content_type: str, data: bytes) -> int:
+        try:
+            path = self.create_physical_path(url, content_type)
+            return path.write_bytes(data)
+        except Exception as error:
+            self.log(error, logging.ERROR)
             return 0
+
+    def save_link(self, url: str):
+        fin = open(file=f"{self.domain}-links.txt", mode="at", encoding='utf8')
+        fin.write(f"{url}\n")
+        fin.close()
 
     def parse(self, response: Response, **kwargs: Any):
         self.log(f"url: {response.url}")
         self.log(f"response.headers: {response.headers}")
-
         content_type: str = response.headers["content-type"].decode("ascii")
-        self.save(response.url, content_type, response.body)
+
+        if self.only_links or self.also_save_links:
+            self.save_link(response.url)
+
+        if not self.only_links or self.also_save_links:
+            self.save_file(response.url, content_type, response.body)
 
         if self.CONTENT_TYPE_HTML in content_type.lower():
-            # <link rel="stylesheet" href="/static/bootstrap.min.css">
-            # links = response.css("//a::attr(href)").getall()
-            links = response.xpath(self.SELECT_REF_XPATH).getall()
-            follows = list()
-            for link in links:
-                if not re.compile(pattern=self.IGNORE_LINKS_REGEX).match(link):
-                    follows.append(link)
-            self.log(f"follows: {follows}")
-            yield from response.follow_all(urls=follows, callback=self.parse)
+            try:
+                links = response.xpath(self.SELECT_REF_XPATH).getall()
+                follows = list()
+                for link in links:
+                    if not re.compile(pattern=self.IGNORE_LINKS_REGEX).match(link):
+                        follows.append(link)
+                self.log(f"follows: {follows}")
+                yield from response.follow_all(urls=follows, callback=self.parse)
+            except Exception as error:
+                self.log(error, level=logging.ERROR)
         else:
             return None
 
@@ -119,6 +142,9 @@ def main():
     parser.add_argument("--log-filename", dest="log_filename", type=str, default="log.out", help="Name of log file.")
     parser.add_argument("--requests-per-domain", dest="requests_per_domain", type=int, default=1,
                         help="Amount simultaneous requests to the web domain.")
+    parser.add_argument("--only-links", dest="only_links", type=bool, default=False, help="Only save page links.")
+    parser.add_argument("--also-save-links", dest="also_save_links", type=bool, default=False,
+                        help="Also save page links.")
     args = parser.parse_args()
 
     process = CrawlerProcess({
@@ -162,6 +188,8 @@ def main():
                   **{"url": args.url,
                      "allowed-domains": args.allowed_domains,
                      "save-dir": args.save_dir,
+                     "only-links": args.only_links,
+                     "also-save-links": args.also_save_links,
                      "override": args.override})
     process.start()
 
