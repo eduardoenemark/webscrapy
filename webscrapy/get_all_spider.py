@@ -1,16 +1,16 @@
 import argparse
+import mimetypes
 import os
 import re
 from pathlib import Path
 from typing import Any
 from typing import Iterable
+from urllib.parse import urlparse
 
 import scrapy
 from scrapy import Request
 from scrapy.crawler import CrawlerProcess
 from scrapy.http import Response
-import mimetypes
-from urllib.parse import urlparse
 
 
 class GetAllSpider(scrapy.Spider):
@@ -123,11 +123,10 @@ def main():
 
     process = CrawlerProcess({
         "CONCURRENT_REQUESTS_PER_DOMAIN": args.requests_per_domain,
+        "CONCURRENT_REQUESTS": args.requests_per_domain * 2,
         "AUTOTHROTTLE_TARGET_CONCURRENCY": args.requests_per_domain,
         "DOWNLOAD_DELAY": args.delay,
         "RANDOMIZE_DOWNLOAD_DELAY": args.randomize_delay,
-        "CONCURRENT_REQUESTS": 16,
-        "CONCURRENT_REQUESTS_PER_DOMAIN": 8,
         "DEPTH_STATS_VERBOSE": True,
         "DOWNLOAD_MAXSIZE": 0,
         "REACTOR_THREADPOOL_MAXSIZE": 1024,
@@ -136,7 +135,22 @@ def main():
         "SCHEDULER_DISK_QUEUE": "scrapy.squeues.PickleFifoDiskQueue",
         "SCHEDULER_MEMORY_QUEUE": "scrapy.squeues.FifoMemoryQueue",
         "SCRAPER_SLOT_MAX_ACTIVE_SIZE": 8_388_608,
-        "USER_AGENT": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "REDIRECT_ENABLED": True,
+        "REDIRECT_MAX_TIMES": 15,
+        "RETRY_ENABLED": True,
+        "RETRY_TIMES": 5,
+        "DEFAULT_REQUEST_HEADERS": {
+            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/115.0",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.5",
+            "Accept-Encoding": "gzip, deflate",
+            "Connection": "keep-alive",
+            "Upgrade-Insecure-Requests": "1",
+            "Sec-Fetch-Dest": "document",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "none",
+            "Sec-Fetch-User": "?1",
+            "Cache-Control": "max-age=0"},
         "DEPT_STATS": True,
         "LOG_ENABLED": True,
         "LOG_STDOUT": True,
