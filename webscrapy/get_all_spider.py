@@ -89,13 +89,14 @@ class GetAllSpider(Spider):
             self.log(f"file {filepath} exists!")
             raise error
 
-    def save_file(self, url: str, content_type: str, data: bytes) -> int:
+    def save_file(self, url: str, content_type: str, data: bytes):
         try:
             path = self.create_physical_path(url, content_type)
-            return path.write_bytes(data)
-        except Exception as error:
-            self.log(error, logging.ERROR)
-            return 0
+            file = open(file=f"{str(path.absolute())}")
+            file.write(data)
+            file.close()
+        except Exception as ex:
+            raise ex
 
     def save_link(self, url: str):
         fin = open(file=f"{self.domain}-links.txt", mode="at", encoding='utf8')
@@ -107,11 +108,14 @@ class GetAllSpider(Spider):
         self.log(f"response.headers: {response.headers}")
         content_type: str = response.headers["content-type"].decode("ascii")
 
-        if self.only_links or self.also_save_links:
-            self.save_link(response.url)
+        try:
+            if self.only_links or self.also_save_links:
+                self.save_link(response.url)
 
-        if not self.only_links or self.also_save_links:
-            self.save_file(response.url, content_type, response.body)
+            if not self.only_links or self.also_save_links:
+                self.save_file(response.url, content_type, response.body)
+        except Exception as ex:
+            self.log(ex, logging.ERROR)
 
         if self.CONTENT_TYPE_HTML in content_type.lower():
             try:
