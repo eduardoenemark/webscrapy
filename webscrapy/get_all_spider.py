@@ -134,6 +134,7 @@ class GetAllSpider(Spider):
 
 
 def main():
+    DOMAIN_LOG_OPTION_VALUE = "[domain].log"
     logging.getLogger().addHandler(logging.StreamHandler())
     parser = argparse.ArgumentParser()
     parser.add_argument("--url", dest="url", type=str, help="Web domain to scrapy.")
@@ -145,13 +146,22 @@ def main():
     parser.add_argument("--override", dest="override", type=bool, help="Override saved files.")
     parser.add_argument("--enable-log-file", dest="enable_log_file", type=bool, default=False,
                         help="Enable log to file.")
-    parser.add_argument("--log-filename", dest="log_filename", type=str, default="log.out", help="Name of log file.")
+    parser.add_argument("--log-filename", dest="log_filename", type=str, default=DOMAIN_LOG_OPTION_VALUE, help="Name of log file.")
     parser.add_argument("--requests-per-domain", dest="requests_per_domain", type=int, default=1,
                         help="Amount simultaneous requests to the web domain.")
     parser.add_argument("--only-links", dest="only_links", type=bool, default=False, help="Only save page links.")
     parser.add_argument("--also-save-links", dest="also_save_links", type=bool, default=False,
                         help="Also save page links.")
     args = parser.parse_args()
+
+    log_filename = None
+    if args.enable_log_file and args.log_filename == DOMAIN_LOG_OPTION_VALUE:
+        url_parsed = urlparse(args.url)
+        log_filename = f"./{url_parsed.hostname}.log"
+    elif not args.enable_log_file:
+        args.log_filename = None
+    else:
+        log_filename = args.log_filename
 
     process = CrawlerProcess({
         "CONCURRENT_REQUESTS_PER_DOMAIN": args.requests_per_domain,
@@ -188,7 +198,7 @@ def main():
         "LOG_STDOUT": True,
         "LOG_FILE_APPEND": True,
         "LOG_LEVEL": "DEBUG",
-        "LOG_FILE": args.log_filename if args.enable_log_file else None
+        "LOG_FILE": log_filename
     })
     process.crawl(GetAllSpider,
                   **{"url": args.url,
