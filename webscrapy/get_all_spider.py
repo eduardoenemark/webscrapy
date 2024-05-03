@@ -11,6 +11,7 @@ from urllib.parse import urlparse
 from scrapy import Request, Spider
 from scrapy.crawler import CrawlerProcess
 from scrapy.http import Response
+import logging
 
 
 class GetAllSpider(Spider):
@@ -133,6 +134,7 @@ class GetAllSpider(Spider):
 
 
 def main():
+    logging.getLogger().addHandler(logging.StreamHandler())
     parser = argparse.ArgumentParser()
     parser.add_argument("--url", dest="url", type=str, help="Web domain to scrapy.")
     parser.add_argument("--allowed-domains", dest="allowed_domains", type=str, help="domains separated by commas.")
