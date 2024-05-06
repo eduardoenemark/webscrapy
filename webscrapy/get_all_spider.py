@@ -48,8 +48,8 @@ class GetAllSpider(Spider):
         self.only_links = getattr(self, "only-links", False)
         self.also_save_links = getattr(self, "also-save-links", False)
 
-        segs = self.segments(self.url)
-        self.domain = segs[0]
+        parsed_url = urlparse(self.url)
+        self.domain = parsed_url.hostname
 
         self.save_dir = getattr(self, "save-dir", None)
         if self.save_dir is None:
@@ -100,7 +100,7 @@ class GetAllSpider(Spider):
     def save_file(self, url: str, content_type: str, data: bytes):
         try:
             path = self.create_physical_path(url, content_type)
-            file = open(file=f"{str(path.absolute())}")
+            file = open(file=f"{str(path.absolute())}", mode='wb')
             file.write(data)
             file.close()
         except Exception as ex:
