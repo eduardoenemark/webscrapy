@@ -77,7 +77,7 @@ class GetAllSpider(Spider):
         parsed_url = urlparse(url)
 
         # Not exist file's extension for URL
-        if not re.compile(pattern=r"/.+\\.[a-zA-Z0-9]{2,10}$").match(parsed_url.path) and not parsed_url.query:
+        if not re.compile(pattern=r".*/.+\.[a-zA-Z0-9]{2,10}$").match(parsed_url.path) and not parsed_url.query:
             dir_path += os.sep.join(segs)
             filepath = dir_path + f"/index{file_ext}"
         # Exist at least a "query" into URL.
@@ -148,7 +148,7 @@ class GetAllSpider(Spider):
 
 
 def main():
-    DOMAIN_LOG_OPTION_VALUE = "[domain].log"
+    domain_log_option_value = "[domain].log"
     logging.getLogger().addHandler(logging.StreamHandler())
     parser = argparse.ArgumentParser()
     parser.add_argument("--url", dest="url", type=str, help="Web domain to scrapy.")
@@ -162,7 +162,7 @@ def main():
     parser.add_argument("--override", dest="override", type=bool, help="Override saved files.")
     parser.add_argument("--enable-log-file", dest="enable_log_file", type=bool, default=False,
                         help="Enable log to file.")
-    parser.add_argument("--log-filename", dest="log_filename", type=str, default=DOMAIN_LOG_OPTION_VALUE,
+    parser.add_argument("--log-filename", dest="log_filename", type=str, default=domain_log_option_value,
                         help="Name of log file.")
     parser.add_argument("--requests-per-domain", dest="requests_per_domain", type=int, default=1,
                         help="Amount simultaneous requests to the web domain.")
@@ -172,7 +172,7 @@ def main():
     args = parser.parse_args()
 
     log_filename = None
-    if args.enable_log_file and args.log_filename == DOMAIN_LOG_OPTION_VALUE:
+    if args.enable_log_file and args.log_filename == domain_log_option_value:
         parsed_url = urlparse(args.url)
         log_filename = f"./{parsed_url.hostname}.log"
     elif not args.enable_log_file:
