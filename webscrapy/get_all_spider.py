@@ -91,7 +91,7 @@ class GetAllSpider(Spider):
 
         try:
             path = Path(filepath)
-            path.touch(mode=0o777, exist_ok=not self.override)
+            path.touch(mode=0o777, exist_ok=self.override)
             return path
         except FileExistsError as error:
             self.log(f"file {filepath} exists!")
@@ -159,7 +159,7 @@ def main():
     parser.add_argument("--randomize-delay", dest="randomize_delay", type=bool, default=True,
                         help="randomize delay interval.")
     parser.add_argument("--save-dir", dest="save_dir", type=str, help="Local directory to save files.")
-    parser.add_argument("--override", dest="override", type=bool, help="Override saved files.")
+    parser.add_argument("--override", dest="override", type=bool, default=False, help="Override saved files.")
     parser.add_argument("--enable-log-file", dest="enable_log_file", type=bool, default=False,
                         help="Enable log to file.")
     parser.add_argument("--log-filename", dest="log_filename", type=str, default=domain_log_option_value,
