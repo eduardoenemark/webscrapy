@@ -21,10 +21,11 @@ class GetAllSpider(Spider):
     override: bool = False
     only_links: bool = False
     also_save_links: bool = False
+    regex_allowed_urls: str = None
 
     CONTENT_TYPE_HTML: str = "text/html"
     SELECT_REF_XPATH: str = "//a/@href|//link/@href|//script/@src|//img/@src|//base/@href|//area/@href"
-    IGNORE_LINKS_REGEX = "^(mailto|javascript|xmpp|urn|tel):|^#$|^#[^/]+$|^$"
+    REGEX_IGNORE_LINKS = "^(mailto|javascript|xmpp|urn|tel):|^#$|^#[^/]+$|^$"
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -32,6 +33,12 @@ class GetAllSpider(Spider):
         self.allowed_domains = getattr(self, "allowed-domains", None)
         if self.allowed_domains is not None:
             self.allowed_domains = self.allowed_domains.split(",")
+
+        if self.regex_allowed_urls is None:
+            self.regex_allowed_urls = ".*"
+
+        self.compiled_regex_ignore_link = re.compile(pattern=self.REGEX_IGNORE_LINKS)
+        self.compiled_regex_allowed_urls = re.compile(pattern=self.regex_allowed_urls)
 
         self.url = getattr(self, "url", None)
         if self.url is None:
@@ -67,10 +74,10 @@ class GetAllSpider(Spider):
 
         # Remove charset of content type.
         file_ext = mimetypes.guess_extension(re.sub(pattern=";.*", repl="", string=content_type))
-        url_parsed = urlparse(url)
+        parsed_url = urlparse(url)
 
         # Not exist file's extension for URL
-        if not re.compile(pattern="/.+\\.[a-zA-Z0-9]{2,10}$").match(url_parsed.path) and not url_parsed.query:
+        if not re.compile(pattern="/.+\\.[a-zA-Z0-9]{2,10}$").match(parsed_url.path) and not parsed_url.query:
             dir_path += os.sep.join(segs)
             filepath = dir_path + f"/index{file_ext}"
         # Exist at least a "query" into URL.
@@ -105,8 +112,7 @@ class GetAllSpider(Spider):
         fin.close()
 
     def parse(self, response: Response, **kwargs: Any):
-        self.log(f"url: {response.url}")
-        self.log(f"response.headers: {response.headers}")
+        self.log(f"headers=[{response.headers}], url=[{response.url}]")
         content_type: str = response.headers["content-type"].decode("ascii")
 
         try:
@@ -123,8 +129,16 @@ class GetAllSpider(Spider):
                 links = response.xpath(self.SELECT_REF_XPATH).getall()
                 follows = list()
                 for link in links:
-                    if not re.compile(pattern=self.IGNORE_LINKS_REGEX).match(link):
+                    if self.compiled_regex_ignore_link.match(link):
+                        continue
+
+                    parsed_url = urlparse(url=link)
+                    if parsed_url.hostname is None:
+                        link = response.urljoin(link)
+
+                    if self.compiled_regex_allowed_urls.match(link):
                         follows.append(link)
+
                 self.log(f"follows: {follows}")
                 yield from response.follow_all(urls=follows, callback=self.parse)
             except Exception as error:
@@ -138,7 +152,9 @@ def main():
     logging.getLogger().addHandler(logging.StreamHandler())
     parser = argparse.ArgumentParser()
     parser.add_argument("--url", dest="url", type=str, help="Web domain to scrapy.")
-    parser.add_argument("--allowed-domains", dest="allowed_domains", type=str, help="domains separated by commas.")
+    parser.add_argument("--allowed-domains", dest="allowed_domains", type=str, help="Domains separated by commas.")
+    parser.add_argument("--regex-allowed-urls", dest="regex_allowed_urls", type=str,
+                        help="Regular expression of allowed URLs.")
     parser.add_argument("--delay", dest="delay", type=int, default=1, help="delay in seconds between requests.")
     parser.add_argument("--randomize-delay", dest="randomize_delay", type=bool, default=True,
                         help="randomize delay interval.")
@@ -146,7 +162,8 @@ def main():
     parser.add_argument("--override", dest="override", type=bool, help="Override saved files.")
     parser.add_argument("--enable-log-file", dest="enable_log_file", type=bool, default=False,
                         help="Enable log to file.")
-    parser.add_argument("--log-filename", dest="log_filename", type=str, default=DOMAIN_LOG_OPTION_VALUE, help="Name of log file.")
+    parser.add_argument("--log-filename", dest="log_filename", type=str, default=DOMAIN_LOG_OPTION_VALUE,
+                        help="Name of log file.")
     parser.add_argument("--requests-per-domain", dest="requests_per_domain", type=int, default=1,
                         help="Amount simultaneous requests to the web domain.")
     parser.add_argument("--only-links", dest="only_links", type=bool, default=False, help="Only save page links.")
@@ -156,8 +173,8 @@ def main():
 
     log_filename = None
     if args.enable_log_file and args.log_filename == DOMAIN_LOG_OPTION_VALUE:
-        url_parsed = urlparse(args.url)
-        log_filename = f"./{url_parsed.hostname}.log"
+        parsed_url = urlparse(args.url)
+        log_filename = f"./{parsed_url.hostname}.log"
     elif not args.enable_log_file:
         args.log_filename = None
     else:
@@ -203,6 +220,7 @@ def main():
     process.crawl(GetAllSpider,
                   **{"url": args.url,
                      "allowed-domains": args.allowed_domains,
+                     "regex_allowed_urls": args.regex_allowed_urls,
                      "save-dir": args.save_dir,
                      "only-links": args.only_links,
                      "also-save-links": args.also_save_links,
