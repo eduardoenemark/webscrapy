@@ -11,7 +11,6 @@ from urllib.parse import urlparse
 from scrapy import Request, Spider
 from scrapy.crawler import CrawlerProcess
 from scrapy.http import Response
-import logging
 
 
 class GetAllSpider(Spider):
@@ -169,18 +168,12 @@ def main():
     parser.add_argument("--only-links", dest="only_links", type=bool, default=False, help="Only save page links.")
     parser.add_argument("--also-save-links", dest="also_save_links", type=bool, default=False,
                         help="Also save page links.")
+    parser.add_argument("--persist", dest="persist", type=bool, default=True, help="Persist crawls in user's home.")
     args = parser.parse_args()
 
-    log_filename = None
-    if args.enable_log_file and args.log_filename == domain_log_option_value:
-        parsed_url = urlparse(args.url)
-        log_filename = f"./{parsed_url.hostname}.log"
-    elif not args.enable_log_file:
-        args.log_filename = None
-    else:
-        log_filename = args.log_filename
+    parsed_url = urlparse(args.url)
 
-    process = CrawlerProcess({
+    crawler_process_settings = {
         "CONCURRENT_REQUESTS_PER_DOMAIN": args.requests_per_domain,
         "CONCURRENT_REQUESTS": args.requests_per_domain * 2,
         "AUTOTHROTTLE_TARGET_CONCURRENCY": args.requests_per_domain,
@@ -213,10 +206,20 @@ def main():
         "DEPT_STATS": True,
         "LOG_ENABLED": True,
         "LOG_STDOUT": True,
-        "LOG_FILE_APPEND": True,
-        "LOG_LEVEL": "DEBUG",
-        "LOG_FILE": log_filename
-    })
+        "LOG_FILE_APPEND": args.enable_log_file,
+        "LOG_LEVEL": "DEBUG"
+    }
+
+    if args.enable_log_file and (args.log_filename == domain_log_option_value or args.log_filename is None):
+        crawler_process_settings["LOG_FILE"] = f"./{parsed_url.hostname}.log"
+    elif args.enable_log_file:
+        crawler_process_settings["LOG_FILE"] = args.log_filename
+
+    if args.persist:
+        crawler_process_settings["JOBDIR"] = f"./jobdir/{parsed_url.hostname}"
+        crawler_process_settings["SCHEDULER_DEBUG"] = True
+
+    process = CrawlerProcess(settings=crawler_process_settings)
     process.crawl(GetAllSpider,
                   **{"url": args.url,
                      "allowed-domains": args.allowed_domains,
