@@ -25,7 +25,7 @@ class GetAllSpider(Spider):
 
     CONTENT_TYPE_HTML: str = "text/html"
     SELECT_REF_XPATH: str = "//a/@href|//link/@href|//script/@src|//img/@src|//base/@href|//area/@href"
-    REGEX_IGNORE_LINKS = "^(mailto|javascript|xmpp|urn|tel):|^#$|^#[^/]+$|^$"
+    REGEX_IGNORE_LINKS = r"^(mailto|javascript|xmpp|urn|tel):|^#$|^#[^/]+$|^$"
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -35,10 +35,10 @@ class GetAllSpider(Spider):
             self.allowed_domains = self.allowed_domains.split(",")
 
         if self.regex_allowed_urls is None:
-            self.regex_allowed_urls = ".*"
+            self.regex_allowed_urls = r".*"
 
         self.compiled_regex_ignore_link = re.compile(pattern=self.REGEX_IGNORE_LINKS)
-        self.compiled_regex_allowed_urls = re.compile(pattern=self.regex_allowed_urls)
+        self.compiled_regex_allowed_urls = re.compile(pattern=fr"{self.regex_allowed_urls}")
 
         self.url = getattr(self, "url", None)
         if self.url is None:
@@ -63,13 +63,13 @@ class GetAllSpider(Spider):
         yield Request(url=self.url, callback=self.parse)
 
     def segments(self, url: str) -> [str]:
-        url_path: str = re.compile("^.+://|/$").sub(repl="", string=url)
+        url_path: str = re.compile(r"^.+://|/$").sub(repl="", string=url)
         return re.split(pattern="/", string=url_path)
 
     def create_physical_path(self, url: str, content_type: str) -> Path:
         segs = self.segments(url)
         dir_path = self.save_dir + os.sep
-        filename = re.compile(pattern="\\0").sub(repl="", string=segs[-1])[:255]
+        filename = re.compile(pattern=r"\\0").sub(repl="", string=segs[-1])[:255]
         filepath = None
 
         # Remove charset of content type.
@@ -77,7 +77,7 @@ class GetAllSpider(Spider):
         parsed_url = urlparse(url)
 
         # Not exist file's extension for URL
-        if not re.compile(pattern="/.+\\.[a-zA-Z0-9]{2,10}$").match(parsed_url.path) and not parsed_url.query:
+        if not re.compile(pattern=r"/.+\\.[a-zA-Z0-9]{2,10}$").match(parsed_url.path) and not parsed_url.query:
             dir_path += os.sep.join(segs)
             filepath = dir_path + f"/index{file_ext}"
         # Exist at least a "query" into URL.
