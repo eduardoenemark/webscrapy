@@ -69,3 +69,5 @@ scrapy-freebsd-webdomain/
 httpwg.org/
 *.out
 *.out.1
+*-links.txt
+jobdir/
