@@ -138,7 +138,7 @@ class GetAllSpider(Spider):
                     if self.compiled_regex_allowed_urls.match(link):
                         follows.append(link)
 
-                self.log(f"follows: {follows}")
+                #self.log(f"follows: {follows}")
                 yield from response.follow_all(urls=follows, callback=self.parse)
             except Exception as error:
                 self.log(error, level=logging.ERROR)
@@ -169,6 +169,7 @@ def main():
     parser.add_argument("--also-save-links", dest="also_save_links", type=bool, default=False,
                         help="Also save page links.")
     parser.add_argument("--persist", dest="persist", type=bool, default=True, help="Persist crawls in user's home.")
+    parser.add_argument("--enable-telnet", dest="enable_telnet", type=bool, default=False, help="Enable telnet connection.")
     args = parser.parse_args()
 
     parsed_url = urlparse(args.url)
@@ -207,7 +208,10 @@ def main():
         "LOG_ENABLED": True,
         "LOG_STDOUT": True,
         "LOG_FILE_APPEND": args.enable_log_file,
-        "LOG_LEVEL": "DEBUG"
+        "LOG_LEVEL": "DEBUG",
+        "TELNETCONSOLE_USERNAME": "scrapy",
+        "TELNETCONSOLE_PASSWORD": "scrapy",
+        "TELNETCONSOLE_ENABLED": args.enable_telnet
     }
 
     if args.enable_log_file and (args.log_filename == domain_log_option_value or args.log_filename is None):
